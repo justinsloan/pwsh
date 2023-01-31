@@ -1,0 +1,20 @@
+allow desktop composition:i:1
+allow font smoothing:i:1
+alternate full address:s:DWVM0001
+alternate shell:s:rdpinit.exe
+devicestoredirect:s:*
+disableremoteappcapscheck:i:1
+drivestoredirect:s:*
+full address:s:DWVM0001.office.atwca.com
+gatewayhostname:s:rdgw-ca-la.office.atwca.com
+gatewayprofileusagemethod:i:1
+gatewayusagemethod:i:2
+prompt for credentials on client:i:1
+promptcredentialonce:i:0
+redirectcomports:i:1
+redirectdrives:i:1
+remoteapplicationmode:i:1
+remoteapplicationname:s:Internet Explorer
+remoteapplicationprogram:s:||Internet Explorer
+span monitors:i:1
+use multimon:i:1
