@@ -11,6 +11,17 @@ Function Get-MassWindowsUpdate ($build) {
 
 
 
+Function Get-TargetedWindowsUpdate ($target) {
+    if (-not $target) {$target = Read-Host -Prompt "Target Machine"}
+    $readyclients = _Check-ReadyClients $target
+    write-output "# of Ready Clients:",$readyclients.count
+    _Install-PSWindowsUpdate $readyclients
+    _Start-WindowsUpdate $readyclients
+    write-output "Update job for $target has been scheduled"
+}
+
+
+
 Function _Get-Clients ($build) {
     # Retrieve the targeted clients list from Active Directory
     $clients = get-adcomputer -filter 'enabled -eq $True' -properties operatingsystem,operatingsystemversion | select name,operatingsystemversion,operatingsystem | where-object -filterscript {$_.operatingsystemversion -like "10.0 ($build*" -and $_.operatingsystem -notlike '*Server*'}
