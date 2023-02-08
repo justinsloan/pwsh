@@ -58,6 +58,16 @@ Function Check-UpdateJobStatus ($readyclients) {
 }
 
 
+Function Restart-UpdatedClients ($readyclients) {
+    # Restarts the target
+    foreach ($client in $readyclients) {
+        if ($client.state -eq "Completed") {
+            invoke-command -computername $client.pscomputername -script {restart-computer -force} -erroraction silentlycontinue
+        }
+    }
+}
+
+
 #invoke-command -computername $readyclients.name -script {get-content C:\PSWindowsUpdate.log} -erroraction silentlycontinue
 
 #invoke-command -computername $readyclients.name -script {select-string -path "C:\PSWindowsUpdate.log" -pattern 'Finished'} -erroraction silentlycontinue
