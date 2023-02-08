@@ -5,7 +5,7 @@ Function Get-MassWindowsUpdate ($build) {
     $readyclients = _Check-ReadyClients $clients
     write-output "# of Ready Clients:",$readyclients.count
     _Install-PSWindowsUpdate $readyclients
-    _Start-WindowsUpdat $readyclients
+    _Start-WindowsUpdate $readyclients
     write-output "All update jobs have been scheduled"
 }
 
