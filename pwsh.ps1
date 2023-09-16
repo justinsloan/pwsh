@@ -5,7 +5,7 @@
 
 function Say-HelloWorld {
     Write-Host "Hello, World."
-}
+} 
 
 # reset password
 # update user's legal name
