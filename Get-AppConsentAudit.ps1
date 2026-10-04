@@ -33,7 +33,8 @@
     Write the full report to this file. A .json extension writes JSON; anything else writes CSV.
     If omitted, no file is written. App names and other directory values can be set by other
     parties, so the script strips control characters from them, and in CSV output prefixes any
-    cell that starts with = + - or @ with an apostrophe so spreadsheets treat it as text.
+    cell that starts with = + - or @ (even after leading whitespace) with an apostrophe so
+    spreadsheets treat it as text.
 
 .PARAMETER IncludeApplicationPermissions
     Also report application permissions granted on Microsoft Graph, Exchange Online and
@@ -133,10 +134,11 @@ function ConvertTo-SafeText {
 }
 
 function Protect-CsvCell {
-    # Spreadsheets run cells that start with = + - or @ as formulas. Prefix an apostrophe
-    # so a hostile app name is shown as text instead of executed.
+    # Spreadsheets run cells that start with = + - or @ as formulas, and some importers trim
+    # leading whitespace first, so look past any leading whitespace. Prefix an apostrophe so a
+    # hostile app name is shown as text instead of executed.
     param($Value)
-    if ($Value -is [string] -and $Value -match '^[=+\-@]') { "'" + $Value } else { $Value }
+    if ($Value -is [string] -and $Value -match '^\s*[=+\-@]') { "'" + $Value } else { $Value }
 }
 
 $spCache   = @{}
