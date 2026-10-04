@@ -31,7 +31,9 @@
 
 .PARAMETER OutputPath
     Write the full report to this file. A .json extension writes JSON; anything else writes CSV.
-    If omitted, no file is written.
+    If omitted, no file is written. App names and other directory values can be set by other
+    parties, so the script strips control characters from them, and in CSV output prefixes any
+    cell that starts with = + - or @ with an apostrophe so spreadsheets treat it as text.
 
 .PARAMETER IncludeApplicationPermissions
     Also report application permissions granted on Microsoft Graph, Exchange Online and
@@ -121,6 +123,22 @@ function Get-RiskyMatch {
     }
 }
 
+function ConvertTo-SafeText {
+    # Names, publishers and scopes come from the directory and can be set by other parties.
+    # Strip control and format characters so a hostile value can't drive the terminal
+    # (ANSI escape sequences) or disguise the report layout.
+    param([string]$Text)
+    if ($null -eq $Text) { return $null }
+    [regex]::Replace($Text, '\p{C}', '')
+}
+
+function Protect-CsvCell {
+    # Spreadsheets run cells that start with = + - or @ as formulas. Prefix an apostrophe
+    # so a hostile app name is shown as text instead of executed.
+    param($Value)
+    if ($Value -is [string] -and $Value -match '^[=+\-@]') { "'" + $Value } else { $Value }
+}
+
 $spCache   = @{}
 $userCache = @{}
 $records   = @{}
@@ -135,8 +153,9 @@ function Get-AppInfo([string]$ServicePrincipalId) {
 
 function Get-UserName([string]$UserId) {
     if (-not $userCache.ContainsKey($UserId)) {
-        $userCache[$UserId] = try { (Get-MgUser -UserId $UserId -Property UserPrincipalName).UserPrincipalName }
-                              catch { $UserId }
+        $name = try { (Get-MgUser -UserId $UserId -Property UserPrincipalName).UserPrincipalName }
+                catch { $UserId }
+        $userCache[$UserId] = ConvertTo-SafeText $name
     }
     $userCache[$UserId]
 }
@@ -145,10 +164,10 @@ function Get-Record([string]$ServicePrincipalId) {
     if (-not $records.ContainsKey($ServicePrincipalId)) {
         $app = Get-AppInfo $ServicePrincipalId
         $records[$ServicePrincipalId] = [pscustomobject]@{
-            App                   = $app.DisplayName
+            App                   = ConvertTo-SafeText $app.DisplayName
             AppId                 = $app.AppId
             ServicePrincipalId    = $ServicePrincipalId
-            Publisher             = $app.VerifiedPublisher.DisplayName
+            Publisher             = ConvertTo-SafeText $app.VerifiedPublisher.DisplayName
             MicrosoftApp          = ($app.AppOwnerOrganizationId -eq $MicrosoftTenantId)
             Enabled               = $app.AccountEnabled
             TenantWideDelegated   = $false
@@ -176,7 +195,8 @@ Write-Host "`nUser consent policy:" -ForegroundColor Cyan
 if ($assigned.Count -eq 0) {
     Write-Host '  User consent is disabled. Users must request admin approval.' -ForegroundColor Green
 }
-foreach ($id in $assigned) {
+foreach ($policyId in $assigned) {
+    $id = ConvertTo-SafeText $policyId
     switch -Wildcard ($id) {
         '*user-default-legacy' { Write-Host "  $id  <-- users can consent to ANY app" -ForegroundColor Yellow }
         '*user-default-low'    { Write-Host "  $id  <-- verified publishers, low-impact permissions only" -ForegroundColor Green }
@@ -188,7 +208,7 @@ foreach ($id in $assigned) {
 Write-Progress -Activity 'App consent audit' -Status 'Reading delegated permission grants'
 foreach ($grant in (Get-MgOauth2PermissionGrant -All)) {
     $record = Get-Record $grant.ClientId
-    $scopes = @($grant.Scope -split ' ' | Where-Object { $_ })
+    $scopes = @($grant.Scope -split ' ' | ForEach-Object { ConvertTo-SafeText $_ } | Where-Object { $_ })
     $record.DelegatedScopes = @(($record.DelegatedScopes + $scopes) | Sort-Object -Unique)
 
     if ($grant.ConsentType -eq 'AllPrincipals') {
@@ -216,6 +236,7 @@ if ($IncludeApplicationPermissions) {
             $record   = Get-Record $assignment.PrincipalId
             $roleName = $roleNames[$assignment.AppRoleId]
             if (-not $roleName) { $roleName = [string]$assignment.AppRoleId }
+            $roleName = ConvertTo-SafeText $roleName
 
             $record.ApplicationRoles = @($record.ApplicationRoles + "$resourceName/$roleName")
             if (Get-RiskyMatch -Value $roleName -Pattern $RiskyApplicationRole) {
@@ -270,7 +291,11 @@ if ($OutputPath) {
         $report | ConvertTo-Json -Depth 3 | Set-Content -Path $OutputPath
     }
     else {
-        $report | Export-Csv -Path $OutputPath -NoTypeInformation
+        $report | ForEach-Object {
+            $row = [ordered]@{}
+            foreach ($property in $_.PSObject.Properties) { $row[$property.Name] = Protect-CsvCell $property.Value }
+            [pscustomobject]$row
+        } | Export-Csv -Path $OutputPath -NoTypeInformation
     }
     Write-Host "`nFull report saved to $OutputPath" -ForegroundColor Cyan
 }
