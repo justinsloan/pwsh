@@ -29,4 +29,4 @@ $Results = foreach ($Group in $Groups) {
 }
 
 $Results | Export-Csv "./EmptyEntraGroups.csv" -NoTypeInformation
-$Results
+$Results | Format-Table DisplayName, UserCount, MemberCount, HasMembers, GroupId -AutoSize
