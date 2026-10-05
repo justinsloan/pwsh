@@ -15,5 +15,5 @@ $Results = foreach ($Group in $EmptyGroups) {
     }
 }
 
-$Results | Export-Csv "C:\Temp\EmptyEntraGroups.csv" -NoTypeInformation
+$Results | Export-Csv "./EmptyEntraGroups.csv" -NoTypeInformation
 $Results
