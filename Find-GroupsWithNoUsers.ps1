@@ -7,6 +7,8 @@ Write-Host "Running... Please wait. This may take a while."
 
 $Groups = Get-MgGroup -All
 
+$Failed = 0
+
 $Results = foreach ($Group in $Groups) {
     try {
         $UserCount = [int](Get-MgGroupMemberCountAsUser -GroupId $Group.Id -ConsistencyLevel eventual)
@@ -24,8 +26,18 @@ $Results = foreach ($Group in $Groups) {
         }
     }
     catch {
+        $Failed++
         Write-Warning "Could not check '$($Group.DisplayName)': $($_.Exception.Message)"
     }
+}
+
+if ($Failed -gt 0) {
+    Write-Warning "$Failed group(s) could not be checked, so the results may be incomplete."
+}
+
+if (-not $Results) {
+    Write-Host "No groups with zero users were found."
+    return
 }
 
 $Results | Export-Csv "./EmptyEntraGroups.csv" -NoTypeInformation
