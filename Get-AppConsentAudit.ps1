@@ -40,6 +40,11 @@
     Also report application permissions granted on Microsoft Graph, Exchange Online and
     SharePoint Online. Application permissions let an app act with no signed-in user.
 
+.PARAMETER UseDeviceCode
+    Sign in with the device code flow: the script prints a code and a web address, and you finish
+    signing in in a browser on any device. Use this on a headless server, over SSH, or whenever
+    the normal browser sign-in doesn't open.
+
 .PARAMETER ResolveUsers
     List the user principal names of people who consented, not just a count. Makes one extra
     lookup per consenting user and needs the Microsoft.Graph.Users module.
@@ -75,6 +80,11 @@
 
     The most complete report, saved as JSON.
 
+.EXAMPLE
+    ./Get-AppConsentAudit.ps1 -UseDeviceCode -TenantId contoso.onmicrosoft.com
+
+    Signs in with a device code instead of opening a browser, for a headless Linux machine.
+
 .NOTES
     Author:  Justin Sloan
     License: MIT
@@ -84,6 +94,7 @@
 param(
     [string]$TenantId,
     [string]$OutputPath,
+    [switch]$UseDeviceCode,
     [switch]$IncludeApplicationPermissions,
     [switch]$ResolveUsers,
     [switch]$ExcludeMicrosoftApps,
@@ -187,6 +198,7 @@ function Get-Record([string]$ServicePrincipalId) {
 # --- Connect ---------------------------------------------------------------
 $connect = @{ Scopes = @('Directory.Read.All', 'Policy.Read.All'); NoWelcome = $true }
 if ($TenantId) { $connect.TenantId = $TenantId }
+if ($UseDeviceCode) { $connect.UseDeviceCode = $true }
 Connect-MgGraph @connect
 
 # --- 1. How are users allowed to consent today? ----------------------------

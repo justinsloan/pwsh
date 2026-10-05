@@ -24,6 +24,7 @@ Examples:
 ./Get-AppConsentAudit.ps1
 ./Get-AppConsentAudit.ps1 -ExcludeMicrosoftApps -OnlyRisky -OutputPath ./risky-apps.csv
 ./Get-AppConsentAudit.ps1 -IncludeApplicationPermissions -ResolveUsers -OutputPath ./audit.json
+./Get-AppConsentAudit.ps1 -UseDeviceCode   # sign in with a device code on a headless machine
 ```
 
 Run `Get-Help ./Get-AppConsentAudit.ps1 -Full` for every option. Try it in a test tenant first.
