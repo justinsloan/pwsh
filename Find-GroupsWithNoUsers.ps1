@@ -3,6 +3,8 @@
 
 Connect-MgGraph -Scopes "Group.Read.All" -NoWelcome
 
+Write-Host "Running... Please wait. This may take a while."
+
 $Groups = Get-MgGroup -All
 
 $Results = foreach ($Group in $Groups) {
