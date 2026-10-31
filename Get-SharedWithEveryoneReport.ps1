@@ -82,6 +82,14 @@ function Add-Finding {
     $findings.Add($row)
 }
 
+function Protect-CsvCell {
+    # Spreadsheets run cells that start with = + - or @ as formulas, and some importers trim
+    # leading whitespace first, so look past any leading whitespace. Prefix an apostrophe so a
+    # hostile file or group name is shown as text instead of executed.
+    param($Value)
+    if ($Value -is [string] -and $Value -match '^\s*[=+\-@]') { "'" + $Value } else { $Value }
+}
+
 function Get-GraphPaged {
     # Every item in a Graph list, following @odata.nextLink.
     param([string]$Uri)
@@ -310,7 +318,11 @@ finally {
     Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
 }
 
-$findings | Export-Csv -Path $OutputPath -NoTypeInformation -Encoding utf8
+$findings | ForEach-Object {
+    $row = [ordered]@{}
+    foreach ($property in $_.PSObject.Properties) { $row[$property.Name] = Protect-CsvCell $property.Value }
+    [pscustomobject]$row
+} | Export-Csv -Path $OutputPath -NoTypeInformation -Encoding utf8
 $checked = "Checked $publicCount public team(s) and group(s) and $searchMatches file(s) that matched the search words"
 if (-not $SkipLibraryScan) { $checked += ", and scanned $scanned item(s) in document libraries" }
 Write-Host "$checked."
