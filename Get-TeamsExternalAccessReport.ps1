@@ -41,6 +41,14 @@ function Add-Finding {
     $findings.Add([pscustomobject]@{ Setting = $Setting; Value = $Value; Advice = $Advice })
 }
 
+function Protect-CsvCell {
+    # Spreadsheets run cells that start with = + - or @ as formulas, and some importers trim
+    # leading whitespace first, so look past any leading whitespace. Prefix an apostrophe so a
+    # hostile policy or domain name is shown as text instead of executed.
+    param($Value)
+    if ($Value -is [string] -and $Value -match '^\s*[=+\-@]') { "'" + $Value } else { $Value }
+}
+
 function Get-DomainList {
     # Returns the domain names in an allowed or blocked list, whichever form the module uses:
     # objects with a Domain property, an allow list with an AllowedDomain property, or text
@@ -155,7 +163,11 @@ finally {
     Disconnect-MicrosoftTeams -ErrorAction SilentlyContinue | Out-Null
 }
 
-$findings | Export-Csv -Path $OutputPath -NoTypeInformation -Encoding utf8
+$findings | ForEach-Object {
+    $row = [ordered]@{}
+    foreach ($property in $_.PSObject.Properties) { $row[$property.Name] = Protect-CsvCell $property.Value }
+    [pscustomobject]$row
+} | Export-Csv -Path $OutputPath -NoTypeInformation -Encoding utf8
 $findings | Format-Table Setting, Value, Advice -Wrap | Out-String -Width 200 | Write-Host
 
 $todo = @($findings | Where-Object Advice)

@@ -1,6 +1,14 @@
 # This script will find all groups in the tenant with no users, and show whether each one
 # still has other members (devices, contacts, service principals or other groups).
 
+function Protect-CsvCell {
+    # Spreadsheets run cells that start with = + - or @ as formulas, and some importers trim
+    # leading whitespace first, so look past any leading whitespace. Prefix an apostrophe so a
+    # hostile group name is shown as text instead of executed.
+    param($Value)
+    if ($Value -is [string] -and $Value -match '^\s*[=+\-@]') { "'" + $Value } else { $Value }
+}
+
 Connect-MgGraph -Scopes "Group.Read.All" -NoWelcome
 
 Write-Host "Running... Please wait. This may take a while."
@@ -40,5 +48,9 @@ if (-not $Results) {
     return
 }
 
-$Results | Export-Csv "./EmptyEntraGroups.csv" -NoTypeInformation
+$Results | ForEach-Object {
+    $Row = [ordered]@{}
+    foreach ($Property in $_.PSObject.Properties) { $Row[$Property.Name] = Protect-CsvCell $Property.Value }
+    [PSCustomObject]$Row
+} | Export-Csv "./EmptyEntraGroups.csv" -NoTypeInformation
 $Results | Format-Table DisplayName, UserCount, MemberCount, HasMembers, GroupId -AutoSize

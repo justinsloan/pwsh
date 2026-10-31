@@ -53,6 +53,14 @@ $locationText = @{
     AdaptiveScope = 'Adaptive scopes'
 }
 
+function Protect-CsvCell {
+    # Spreadsheets run cells that start with = + - or @ as formulas, and some importers trim
+    # leading whitespace first, so look past any leading whitespace. Prefix an apostrophe so a
+    # hostile policy name is shown as text instead of executed.
+    param($Value)
+    if ($Value -is [string] -and $Value -match '^\s*[=+\-@]') { "'" + $Value } else { $Value }
+}
+
 function Format-Duration {
     # 2555 becomes "7 years", 30 becomes "30 days".
     param([int]$Days)
@@ -204,7 +212,11 @@ if ($report.Count -eq 0) {
     return
 }
 
-$report | Export-Csv -Path $OutputPath -NoTypeInformation -Encoding utf8
+$report | ForEach-Object {
+    $row = [ordered]@{}
+    foreach ($property in $_.PSObject.Properties) { $row[$property.Name] = Protect-CsvCell $property.Value }
+    [pscustomobject]$row
+} | Export-Csv -Path $OutputPath -NoTypeInformation -Encoding utf8
 $report | Format-Table Name, Type, Status, Does -Wrap | Out-String -Width 200 | Write-Host
 Write-Host "Found $($report.Count) policies. Full details, including what each one covers, are in $OutputPath"
 

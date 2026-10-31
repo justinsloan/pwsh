@@ -1,5 +1,13 @@
 # This script will list all licensed users that have not signed in within the last 30 days.
 
+function Protect-CsvCell {
+    # Spreadsheets run cells that start with = + - or @ as formulas, and some importers trim
+    # leading whitespace first, so look past any leading whitespace. Prefix an apostrophe so a
+    # hostile user name is shown as text instead of executed.
+    param($Value)
+    if ($Value -is [string] -and $Value -match '^\s*[=+\-@]') { "'" + $Value } else { $Value }
+}
+
 Connect-MgGraph `
     -Scopes "User.Read.All","AuditLog.Read.All" `
     -NoWelcome
@@ -84,6 +92,11 @@ $Results =
     Sort-Object @{ Expression = { if ($null -eq $_.DaysInactive) { [int]::MaxValue } else { $_.DaysInactive } }; Descending = $true }
 
 $Results |
+    ForEach-Object {
+        $Row = [ordered]@{}
+        foreach ($Property in $_.PSObject.Properties) { $Row[$Property.Name] = Protect-CsvCell $Property.Value }
+        [PSCustomObject]$Row
+    } |
     Export-Csv `
         -Path ".\InactiveLicensedUsers.csv" `
         -NoTypeInformation `
